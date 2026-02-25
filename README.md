@@ -1,6 +1,10 @@
-# Velo
+# velo
 
-Fast, asynchronous, structured logging in Go.
+<div align="center">
+  <img src="assets/IMG_7974.webp" alt="Velo logo" width="200">
+
+  <h1>Fast, asynchronous, structured logging in Go.</h2>
+</div>
 
 Velo gives you a clear, developer friendly API without sacrificing app performance. It moves I/O operations to a background worker so your hot paths never block waiting for logs to write. 
 
