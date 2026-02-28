@@ -3,7 +3,7 @@ module velo
 go 1.26
 
 require (
-	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/charmbracelet/lipgloss/v2 v2.0.0
 	golang.org/x/sys v0.41.0
 )
 
