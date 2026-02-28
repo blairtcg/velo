@@ -1,3 +1,23 @@
+// Copyright (c) 2026 blairtcg
+//
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+
 package velo
 
 import (
@@ -5,27 +25,28 @@ import (
 	"time"
 )
 
-// Entry contains the details of a single log event.
+// Entry encapsulates all the data associated with a single log event.
 //
-// It holds the core message, metadata, and structured fields needed
-// to format and output the log. The logger builds this struct and 
-// passes it to the formatter before writing to the output stream.
+// It holds the timestamp, message, level, caller information, and any attached
+// fields. The Logger populates this struct before passing it to the Formatter.
+//
+// Performance Note: The library pools Entry objects to eliminate allocations
+// during high throughput logging. The Logger retrieves an Entry from the pool,
+// populates it, formats it, and then immediately returns it to the pool.
 type Entry struct {
-	Level          Level
 	Time           time.Time
-	Message        string
 	Fields         []any
 	TypedFields    []Field
 	PreEncodedJSON []byte
+	Stack          []uintptr
+	Message        string
 	Prefix         string
 	Caller         string
-	Formatter      Formatter
 	TimeFormat     string
-	Stack          []uintptr
+	Formatter      Formatter
+	Level          Level
 }
 
-// _entryPool stores reusable log entries.
-// It helps reduce memory allocations and keeps the logger fast under heavy load.
 var _entryPool = sync.Pool{
 	New: func() any {
 		return &Entry{
@@ -35,10 +56,15 @@ var _entryPool = sync.Pool{
 	},
 }
 
-// getEntry retrieves a clean log entry from the pool.
-//
-// If the pool is empty, it creates a new entry with preallocated
-// slices for your log fields. This prevents unnecessary memory 
-// allocations on the hot path.
 func getEntry() *Entry {
-	return _entryPool.Get
+	return _entryPool.Get().(*Entry)
+}
+
+func putEntry(e *Entry) {
+	// Reset the entry for reuse.
+	e.Fields = e.Fields[:0]
+	e.TypedFields = e.TypedFields[:0]
+	e.PreEncodedJSON = nil
+	e.Stack = e.Stack[:0]
+	_entryPool.Put(e)
+}
